@@ -1,0 +1,3 @@
+/Users/ijuhui/CLionProjects/networks/cmake-build-debug/CMakeFiles/networks.dir
+/Users/ijuhui/CLionProjects/networks/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/ijuhui/CLionProjects/networks/cmake-build-debug/CMakeFiles/rebuild_cache.dir
