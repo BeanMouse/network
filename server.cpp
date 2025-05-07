@@ -42,8 +42,19 @@ int main(){
     cout << "🌐 클라이언트 연결됨!" << endl;
     cout << "IP 주소: " << clientIP << endl;
     cout << "포트 번호: " << clientPort << endl;
+
     const char *msg = "안녕하세요 클라이언트님!\n";
     send(clientSocket, msg, strlen(msg), 0);
+
+    char buffer[1024];
+    ssize_t bytesRead=recv(clientSocket, buffer, sizeof(buffer)-1, 0);
+    if (bytesRead<0) {
+        perror("recv");
+        exit(1);
+    }
+    buffer[bytesRead] = '\0';
+    cout<<"받은 메시지: "<<buffer<<endl;
+
     close(clientSocket);
     close(listenSocket);
     return 0;
