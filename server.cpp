@@ -2,7 +2,6 @@
 // Created by 이주희 on 25. 5. 7.
 //
 #include <iostream>
-#include <string>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
