@@ -26,11 +26,19 @@ int main() {
         exit(1);
     }
     cout<<"연결 성공!"<<endl;
-    string message;
-    cout<<"보낼 메시지"<<endl;
-    getline(cin, message);
-    send(clientSocket, message.c_str(), message.length(), 0);
-    cout<<"메시지 전송 성공!"<<endl;
-    close(clientSocket);
-    return 0;
+    while (true) {
+        string msg;
+        cout<<"보낼 메시지:";
+        getline(cin, msg);
+        send(clientSocket, msg.c_str(), msg.length(), 0);
+        if (msg == "exit") {close(clientSocket); exit(0);}
+        char buffer[1024];
+        ssize_t bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+        if (bytesRead > 0) {
+            buffer[bytesRead] = '\0';
+            cout << "📨 서버 응답: " << buffer << endl;
+        }
+    }
+   return 0;
+
 }
