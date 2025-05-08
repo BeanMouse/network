@@ -6,13 +6,16 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <cstring>
+#include <string>
 #include <sstream>
 #include <vector>
 #include <fstream>
 #include <filesystem>
 using namespace std;
 namespace fs = std::filesystem;
+
+struct
+
 vector<string> splitCommand(const string &input) {
     vector<string> tokens;
     stringstream ss(input);
@@ -28,6 +31,7 @@ vector<string> splitCommand(const string &input) {
     }
     return tokens;
 }
+
 int main(){
     filesystem::create_directory("docs");
     int listenSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -70,44 +74,74 @@ int main(){
          buffer[bytesRead]='\0';
          string command(buffer);
          vector<string> cmd = splitCommand(command);
+
         if (cmd[0]=="create") {
             cout<<"create"<<endl;
-            string response = "create success";
-            send(clientSocket, response.c_str(), response.length(), 0);
+
             const string& filename = "docs/"+cmd[1]+".txt";
             ofstream file(filename);
             int content = stoi( cmd[2]);
             for (int i = 0; i < content; i++) {
-                file<<i+1<<"."<<cmd[3+i]<<endl;
+                file<<"[Section "<<i+1<<". "<<cmd[3+i]<<" ]\n"<<endl;
             }
             file.close();
-            response = "create success "+filename;
+            string response = "create success "+filename;
             send(clientSocket, response.c_str(), response.length(), 0);
          }
          else if (cmd[0]=="read") {
-             cout<<"read"<<endl;
-             if (cmd.size() == 1) {
+
                  string contents;
                  for (const auto &entry : filesystem::directory_iterator("docs")) {
-                     if (entry.is_regular_file()&&entry.path().extension()==".txt") {
-                         ifstream file(entry.path());
-                         if (file.is_open()) {
-                             contents+=entry.path().filename().string()+"\n";
-                             string content;
-                             while (getline(file, content)) {
-                                 contents+="\t"+content+"\n";
+                     if (cmd.size() == 1) {
+                         if (entry.is_regular_file()&&entry.path().extension()==".txt") {
+                             ifstream file(entry.path());
+                             if (file.is_open()) {
+                                 string title=entry.path().filename().string();
+                                 contents+=title.substr(0,title.length()-4)+"\n";
+                                 string content;
+                                 while (getline(file, content)) {
+                                     if (content.starts_with("[Section")) {
+                                         string s_title=content.substr(9,content.length()-10);
+                                         contents+="\t"+s_title+"\n";
+                                     }
+                                 }
+                                 contents+="\n";
+                                 file.close();
                              }
-                             contents+="\n";
-                             file.close();
+                         }
+                     }else if (cmd.size()==3) {
+                         if (entry.is_regular_file()
+                             &&entry.path().extension()==".txt"
+                             &&entry.path().filename().string()==(cmd[1]+".txt")) {
+                             ifstream file(entry.path());
+                             if (file.is_open()) {
+                                 string content;
+                                 bool inSection = false;
+                                 while (getline(file, content)) {
+                                     if (content.starts_with("[Section")) {
+                                         size_t dot = content.find('.');
+                                         size_t end = content.find(']');
+                                         if (dot != string::npos && end != string::npos) {
+                                             string s_title = content.substr(dot + 2, end - (dot + 2));
+                                             if (s_title == cmd[2]) {
+                                                 inSection = true;
+                                                 continue;
+                                             }
+                                             if (inSection) break;
+                                         }
+                                     }
+                                     if (inSection && !content.empty()) {
+                                         contents += content + "\n";
+                                     }
+                                 }
+                                 file.close();
+                             }
                          }
                      }
                  }
-                 send(clientSocket, contents.c_str(), contents.length(), 0);
-             }else if (cmd.size() == 2) {
+             send(clientSocket, contents.c_str(), contents.length(), 0);
+             cout<<"read"<<endl;
 
-             }else if (cmd.size() == 3) {
-
-             }
          }else if (cmd[0]=="write") {
              cout<<"write"<<endl;
              string response = "write success";
