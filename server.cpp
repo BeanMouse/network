@@ -10,7 +10,9 @@
 #include <sstream>
 #include <vector>
 #include <fstream>
+#include <filesystem>
 using namespace std;
+namespace fs = std::filesystem;
 vector<string> splitCommand(const string &input) {
     vector<string> tokens;
     stringstream ss(input);
@@ -27,6 +29,7 @@ vector<string> splitCommand(const string &input) {
     return tokens;
 }
 int main(){
+    filesystem::create_directory("docs");
     int listenSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (listenSocket < 0) {
         perror("socket");
@@ -71,30 +74,39 @@ int main(){
             cout<<"create"<<endl;
             string response = "create success";
             send(clientSocket, response.c_str(), response.length(), 0);
-            const string& filename = cmd[1];
+            const string& filename = "docs/"+cmd[1]+".txt";
             ofstream file(filename);
             int content = stoi( cmd[2]);
             for (int i = 0; i < content; i++) {
                 file<<i+1<<"."<<cmd[3+i]<<endl;
             }
             file.close();
-            response = "create success"+filename;
+            response = "create success "+filename;
             send(clientSocket, response.c_str(), response.length(), 0);
          }
          else if (cmd[0]=="read") {
              cout<<"read"<<endl;
-             string response = "read success";
-             send(clientSocket, response.c_str(), response.length(), 0);
-             if (stoi(cmd[1])==0) {
-                 ifstream file(cmd[2]);
-                 string line;
-                 while (getline(file, line)) {
-                     cout << line << endl;
+             if (cmd.size() == 1) {
+                 string contents;
+                 for (const auto &entry : filesystem::directory_iterator("docs")) {
+                     if (entry.is_regular_file()&&entry.path().extension()==".txt") {
+                         ifstream file(entry.path());
+                         if (file.is_open()) {
+                             contents+=entry.path().filename().string()+"\n";
+                             string content;
+                             while (getline(file, content)) {
+                                 contents+="\t"+content+"\n";
+                             }
+                             contents+="\n";
+                             file.close();
+                         }
+                     }
                  }
-                 file.close();
-             }
-             else {
-                 ifstream file(cmd[1]);
+                 send(clientSocket, contents.c_str(), contents.length(), 0);
+             }else if (cmd.size() == 2) {
+
+             }else if (cmd.size() == 3) {
+
              }
          }else if (cmd[0]=="write") {
              cout<<"write"<<endl;

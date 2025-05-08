@@ -36,7 +36,7 @@ int main() {
         ssize_t bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
         if (bytesRead > 0) {
             buffer[bytesRead] = '\0';
-            cout << "📨 서버 응답: " << buffer << endl;
+            cout << buffer << endl;
         }
     }
    return 0;

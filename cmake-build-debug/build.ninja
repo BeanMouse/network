@@ -41,47 +41,66 @@ include CMakeFiles/rules.ninja
 
 cmake_ninja_workdir = /Users/ijuhui/CLionProjects/networks/cmake-build-debug/
 # =============================================================================
-# Object build statements for EXECUTABLE target networks
+# Object build statements for EXECUTABLE target server
 
 
 #############################################
-# Order-only phony target for networks
+# Order-only phony target for server
 
-build cmake_object_order_depends_target_networks: phony || .
+build cmake_object_order_depends_target_server: phony || .
 
-build CMakeFiles/networks.dir/main.cpp.o: CXX_COMPILER__networks_unscanned_Debug /Users/ijuhui/CLionProjects/networks/main.cpp || cmake_object_order_depends_target_networks
-  DEP_FILE = CMakeFiles/networks.dir/main.cpp.o.d
+build CMakeFiles/server.dir/server.cpp.o: CXX_COMPILER__server_unscanned_Debug /Users/ijuhui/CLionProjects/networks/server.cpp || cmake_object_order_depends_target_server
+  DEP_FILE = CMakeFiles/server.dir/server.cpp.o.d
   FLAGS = -g -std=gnu++20 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -mmacosx-version-min=15.1 -fcolor-diagnostics
-  OBJECT_DIR = CMakeFiles/networks.dir
-  OBJECT_FILE_DIR = CMakeFiles/networks.dir
-
-build CMakeFiles/networks.dir/server.cpp.o: CXX_COMPILER__networks_unscanned_Debug /Users/ijuhui/CLionProjects/networks/server.cpp || cmake_object_order_depends_target_networks
-  DEP_FILE = CMakeFiles/networks.dir/server.cpp.o.d
-  FLAGS = -g -std=gnu++20 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -mmacosx-version-min=15.1 -fcolor-diagnostics
-  OBJECT_DIR = CMakeFiles/networks.dir
-  OBJECT_FILE_DIR = CMakeFiles/networks.dir
-
-build CMakeFiles/networks.dir/client.cpp.o: CXX_COMPILER__networks_unscanned_Debug /Users/ijuhui/CLionProjects/networks/client.cpp || cmake_object_order_depends_target_networks
-  DEP_FILE = CMakeFiles/networks.dir/client.cpp.o.d
-  FLAGS = -g -std=gnu++20 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -mmacosx-version-min=15.1 -fcolor-diagnostics
-  OBJECT_DIR = CMakeFiles/networks.dir
-  OBJECT_FILE_DIR = CMakeFiles/networks.dir
+  OBJECT_DIR = CMakeFiles/server.dir
+  OBJECT_FILE_DIR = CMakeFiles/server.dir
 
 
 # =============================================================================
-# Link build statements for EXECUTABLE target networks
+# Link build statements for EXECUTABLE target server
 
 
 #############################################
-# Link the executable networks
+# Link the executable server
 
-build networks: CXX_EXECUTABLE_LINKER__networks_Debug CMakeFiles/networks.dir/main.cpp.o CMakeFiles/networks.dir/server.cpp.o CMakeFiles/networks.dir/client.cpp.o
+build server: CXX_EXECUTABLE_LINKER__server_Debug CMakeFiles/server.dir/server.cpp.o
   FLAGS = -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -mmacosx-version-min=15.1
-  OBJECT_DIR = CMakeFiles/networks.dir
+  OBJECT_DIR = CMakeFiles/server.dir
   POST_BUILD = :
   PRE_LINK = :
-  TARGET_FILE = networks
-  TARGET_PDB = networks.dbg
+  TARGET_FILE = server
+  TARGET_PDB = server.dbg
+
+# =============================================================================
+# Object build statements for EXECUTABLE target client
+
+
+#############################################
+# Order-only phony target for client
+
+build cmake_object_order_depends_target_client: phony || .
+
+build CMakeFiles/client.dir/client.cpp.o: CXX_COMPILER__client_unscanned_Debug /Users/ijuhui/CLionProjects/networks/client.cpp || cmake_object_order_depends_target_client
+  DEP_FILE = CMakeFiles/client.dir/client.cpp.o.d
+  FLAGS = -g -std=gnu++20 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -mmacosx-version-min=15.1 -fcolor-diagnostics
+  OBJECT_DIR = CMakeFiles/client.dir
+  OBJECT_FILE_DIR = CMakeFiles/client.dir
+
+
+# =============================================================================
+# Link build statements for EXECUTABLE target client
+
+
+#############################################
+# Link the executable client
+
+build client: CXX_EXECUTABLE_LINKER__client_Debug CMakeFiles/client.dir/client.cpp.o
+  FLAGS = -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX15.2.sdk -mmacosx-version-min=15.1
+  OBJECT_DIR = CMakeFiles/client.dir
+  POST_BUILD = :
+  PRE_LINK = :
+  TARGET_FILE = client
+  TARGET_PDB = client.dbg
 
 
 #############################################
@@ -124,7 +143,7 @@ build codegen: phony
 #############################################
 # Folder: /Users/ijuhui/CLionProjects/networks/cmake-build-debug
 
-build all: phony networks
+build all: phony server client
 
 # =============================================================================
 # Built-in targets
