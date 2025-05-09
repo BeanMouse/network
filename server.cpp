@@ -55,8 +55,8 @@ int main(){
         exit(1);
     }
     cout<<"연결 대기 성공!"<<endl;
-    int clientSocket = ::accept(listenSocket, nullptr, nullptr);
-    if (clientSocket<0) {
+    int connectionSocket = ::accept(listenSocket, nullptr, nullptr);
+    if (connectionSocket<0) {
         perror("accept");
         exit(1);
     }
@@ -69,7 +69,7 @@ int main(){
     cout << "포트 번호: " << clientPort << endl;
      while (true) {
          char buffer[1024];
-         ssize_t bytesRead=recv(clientSocket,buffer,sizeof(buffer)-1,0);
+         ssize_t bytesRead=recv(connectionSocket,buffer,sizeof(buffer)-1,0);
          if (bytesRead<=0) break;
          buffer[bytesRead]='\0';
          string command(buffer);
@@ -86,13 +86,12 @@ int main(){
             }
             file.close();
             string response = "create success "+filename;
-            send(clientSocket, response.c_str(), response.length(), 0);
+            send(connectionSocket, response.c_str(), response.length(), 0);
          }
          else if (cmd[0]=="read") {
-
-                 string contents;
-                 for (const auto &entry : filesystem::directory_iterator("docs")) {
-                     if (cmd.size() == 1) {
+             string contents;
+             if (cmd.size() == 1) {
+                     for (const auto &entry : filesystem::directory_iterator("docs")) {
                          if (entry.is_regular_file()&&entry.path().extension()==".txt") {
                              ifstream file(entry.path());
                              if (file.is_open()) {
@@ -109,54 +108,131 @@ int main(){
                                  file.close();
                              }
                          }
-                     }else if (cmd.size()==3) {
-                         if (entry.is_regular_file()
-                             &&entry.path().extension()==".txt"
-                             &&entry.path().filename().string()==(cmd[1]+".txt")) {
-                             ifstream file(entry.path());
-                             if (file.is_open()) {
-                                 string content;
-                                 bool inSection = false;
-                                 while (getline(file, content)) {
-                                     if (content.starts_with("[Section")) {
-                                         size_t dot = content.find('.');
-                                         size_t end = content.find(']');
-                                         if (dot != string::npos && end != string::npos) {
-                                             string s_title = content.substr(dot + 2, end - (dot + 2));
-                                             if (s_title == cmd[2]) {
-                                                 inSection = true;
-                                                 continue;
-                                             }
-                                             if (inSection) break;
-                                         }
+                     }
+                 }
+             else if (cmd.size()==3) {
+                     string filename="docs/"+cmd[1]+".txt";
+                     ifstream infile(filename);
+                     cout<<filename<<endl;
+                     if (infile.is_open()) {
+                         string content;
+                         bool inSection = false;
+                         while (getline(infile, content)) {
+                             if (content.starts_with("[Section")) {
+                                 size_t dot = content.find('.');
+                                 size_t end = content.find(']');
+                                 if (dot != string::npos && end != string::npos) {
+                                     string s_title = content.substr(dot + 2, end - (dot + 2));
+                                     if (s_title == cmd[2]) {
+                                         inSection = true;
+                                         contents+=content.substr(dot-1,end-(dot-1))+"\n";
                                      }
-                                     if (inSection && !content.empty()) {
-                                         contents += content + "\n";
-                                     }
+                                     else if (inSection) break;
                                  }
-                                 file.close();
                              }
+                             else if (inSection && !content.empty()) {
+                                 cout<<content<<endl;
+                                 contents +="\t"+ content + "\n";
+                                 cout<<contents<<endl;
+                             }
+                         }
+                         infile.close();
+                     }
+                 }
+             else {
+                 contents="올바른 read 형식이 아닙니다 \n \"read\" 또는 read \"제목\" \"섹션\"을 입력해주세요";
+             }
+
+             send(connectionSocket, contents.c_str(), contents.length(), 0);
+             cout<<"read"<<endl;
+         }else if (cmd[0] == "write") {
+             string filename = "docs/" + cmd[1] + ".txt";
+             ifstream file(filename);
+             if (!file.is_open()) {
+                 string err = "파일 열기 실패";
+                 send(connectionSocket, err.c_str(), err.length(), 0);
+                 return -1;
+             }
+             vector<string> contents;
+             string content;
+             while (getline(file, content)) {
+                 contents.push_back(content);
+             }
+             file.close();
+
+             bool inSection = false;
+             vector<string> newContents;
+             for (size_t i = 0; i < contents.size(); i++) {
+                 string& content = contents[i];
+                 if (content.starts_with("[Section")) {
+                     size_t dot = content.find('.');
+                     size_t end = content.find(']');
+                     if (dot != string::npos && end != string::npos) {
+                         string s_title = content.substr(dot + 2, end - (dot + 2));
+                         if (s_title == cmd[2]) {
+                             inSection = true;
+                             newContents.push_back(content);
+                             continue;
+                         }if (inSection) {
+                             inSection = false;
                          }
                      }
                  }
-             send(clientSocket, contents.c_str(), contents.length(), 0);
-             cout<<"read"<<endl;
+                 if (!inSection) {
+                     newContents.push_back(content);
+                 }
+             }
+             string input="내용을 입력해주세요:";
+             send(connectionSocket, input.c_str(), input.length(), 0);
+             char text[1024];
+             ssize_t bytesRead=recv(connectionSocket, text, 1024, 0);
+             if (bytesRead<=0) {
+                 perror("recv");
+                 exit(1);
+             }
+             text[bytesRead]='\0';
+             string response = text;
 
-         }else if (cmd[0]=="write") {
-             cout<<"write"<<endl;
-             string response = "write success";
-             send(clientSocket, response.c_str(), response.length(), 0);
+             istringstream iss(response);
+             string sentence;
+             vector<string> sentences;
+             while (getline(iss,sentence)) {
+                 sentences.push_back(sentence);
+             }
+             auto it = newContents.begin();
+             while (it != newContents.end()) {
+                 if (it->starts_with("[Section")) {
+                     size_t dot = it->find('.');
+                     size_t end = it->find(']');
+                     if (dot != string::npos && end != string::npos) {
+                         string s_title = it->substr(dot + 2, end - (dot + 2));
+                         if (s_title == cmd[2]) {
+                             ++it;
+                             newContents.insert(it, sentences.begin(), sentences.end());
+                             break;
+                         }
+                     }
+                 }
+                 ++it;
+             }
+             ofstream outFile(filename);
+             for (const auto &line : newContents) {
+                 outFile<<line<<"\n";
+             }
+             outFile.close();
+
+             string msg = "write success\n";
+             send(connectionSocket, msg.c_str(), msg.length(), 0);
          }
          else if (cmd[0]=="bye") {
              cout<<"bye"<<endl;
              string response = "bye success";
-             send(clientSocket, response.c_str(), response.length(), 0);
+             send(connectionSocket, response.c_str(), response.length(), 0);
+             close(connectionSocket);
              break;
          }
      }
-
-
-    close(clientSocket);
-    close(listenSocket);
     return 0;
 }
+
+
