@@ -53,10 +53,35 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
     cout << "포트 번호: " << clientPort << endl;
     while (true) {
         char buffer[1024];
-        ssize_t bytesRead=recv(connectionSocket,buffer,sizeof(buffer)-1,0);
-        if (bytesRead<=0) break;
-        buffer[bytesRead]='\0';
-        string command(buffer);
+        string command;
+
+        while (true) {
+            ssize_t bytesRead = recv(connectionSocket, buffer, sizeof(buffer) - 1, 0);
+            if (bytesRead <= 0) break;
+
+            // 1. 새로 받은 데이터 디버깅
+            cout << "[DEBUG] 받은 raw 데이터: ";
+            for (int i = 0; i < bytesRead; ++i) {
+                if (buffer[i] == '\b') cout << "[\\b]";
+                else if (buffer[i] == '\n') cout << "[\\n]";
+                else if (buffer[i] == '\r') cout << "[\\r]";
+                else cout << buffer[i];
+            }
+            cout << endl;
+
+            // 2. 누적 명령어에 반영 (백스페이스 적용 안 한 상태)
+            command.append(buffer, bytesRead);
+
+            // 3. 지금까지 누적된 전체 명령어 출력
+            cout << "[DEBUG] 누적된 명령: ";
+            for (char c : command) {
+                if (c == '\b') cout << "[\\b]";
+                else cout << c;
+            }
+            cout << endl;
+
+            if (!command.empty() && command.back() == '\n') break;
+        }
         vector<string> cmd = splitCommand(command);
         string comments;
         if (cmd.size()==0) {
