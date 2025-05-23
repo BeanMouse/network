@@ -16,9 +16,13 @@
 #include <queue>
 #include <condition_variable>
 #include <map>
+#include <atomic>
+
 using namespace std;
 namespace fs = std::filesystem;
-
+atomic<int> clientCount(0);
+atomic<bool> isRunning(true);
+int listenSocket;
 struct SectionLock {
     mutex m;
     condition_variable cv;
@@ -47,6 +51,8 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
     char clientIP[INET_ADDRSTRLEN]; //ip주소 저장
     inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
     int clientPort = ntohs(clientAddr.sin_port);
+
+    ++clientCount;
 
     cout << "🌐 클라이언트 연결됨!" << endl;
     cout << "IP 주소: " << clientIP << endl;
@@ -99,18 +105,44 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
                 send(connectionSocket, comments.c_str(), comments.length(), 0);
                 continue;
             }
-            ofstream file(filename);
+            if(cmd.size()<3){
+                comments="create 형식이 올바르지 않습니다.\n";
+                send(connectionSocket, comments.c_str(), comments.length(), 0);
+                continue;
+            }
             int content = stoi( cmd[2]);
             if (cmd.size()!=(content+3)) {
                 comments="create 형식이 올바르지 않습니다.\n";
                 send(connectionSocket, comments.c_str(), comments.length(), 0);
                 continue;
             }
+            if(content>10){
+                comments="섹션은 최대 10개 입니다\n";
+                send(connectionSocket, comments.c_str(), comments.length(), 0);
+                continue;
+            }
+            if(cmd[1].size()>64){
+                comments="파일 이름은 64바이트 이하로 제한됩니다\n";
+                send(connectionSocket, comments.c_str(), comments.length(), 0);
+                continue;
+            }
+            bool isCreate=true;
+            for (int i = 0; i < content; i++) {
+                if (cmd[3+i].size()>64) {
+                    comments="섹션 제목은 64바이트 이하로 제한됩니다\n";
+                    send(connectionSocket, comments.c_str(), comments.length(), 0);
+                    isCreate=false;
+                    break;
+                }
+            }
+            if(!isCreate) continue;
+            ofstream file(filename);
+
             for (int i = 0; i < content; i++) {
                 file<<"[Section "<<i+1<<". "<<cmd[3+i]<<"]\n"<<endl;
             }
             file.close();
-            string response = "create success "+filename;
+            string response = "create success "+filename+"\n";
             send(connectionSocket, response.c_str(), response.length(), 0);
          }
          else if (cmd[0]=="read") {
@@ -249,21 +281,34 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
                  lock.cv.notify_all();
                  continue;
              }
+             string askLineCount = "몇 줄을 입력할 지 숫자만 입력해주세요(최대 10줄, 초과 시 10줄로 제한됩니다): ";
+             send(connectionSocket, askLineCount.c_str(), askLineCount.length(), 0);
+
+             // 줄 개수 입력 받기
+             char countBuf[10];
+             ssize_t countRead = recv(connectionSocket, countBuf, sizeof(countBuf) - 1, 0);
+             countBuf[countRead] = '\0';
+             int lineCountInt = stoi(countBuf);
+             if (lineCountInt > 10) lineCountInt = 10;
+
              string input="내용을 입력해주세요:";
              send(connectionSocket, input.c_str(), input.length(), 0);
-             char text[1024];
-             ssize_t bytesRead=recv(connectionSocket, text, 1024, 0);
-             if (bytesRead<=0) {
-                 perror("recv");
-                 exit(1);
-             }
-             text[bytesRead]='\0';
-             string response = text;
-
-             istringstream iss(response);
-             string sentence;
              vector<string> sentences;
-             while (getline(iss,sentence)) {
+             for (int i = 0; i < lineCountInt; ++i) {
+                 char lineBuf[1024];
+                 ssize_t len = recv(connectionSocket, lineBuf, sizeof(lineBuf) - 1, 0);
+                 if (len <= 0) {
+                     perror("recv");
+                     break;
+                 }
+                 lineBuf[len] = '\0';
+                 string sentence(lineBuf);
+
+                 // 줄 길이 제한 (64바이트)
+                 if (sentence.size() > 64) {
+                     sentence = sentence.substr(0, 64);
+                 }
+
                  sentences.push_back(sentence);
              }
              auto it = newContents.begin();
@@ -295,10 +340,14 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
 
          }
          else if (cmd[0]=="bye") {
-             cout<<"bye"<<endl;
              string response = "다음에 봅시다";
              send(connectionSocket, response.c_str(), response.length(), 0);
              close(connectionSocket);
+             clientCount-=1;
+             if (clientCount==0) {
+                 isRunning=false;
+                 close(listenSocket);
+             }
              return;
          }else {
              comments="유효하지 않은 명령어 입니다\n";
@@ -309,7 +358,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
 
 int main(){
     filesystem::create_directory("docs");
-    int listenSocket = socket(AF_INET, SOCK_STREAM, 0);
+    listenSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (listenSocket < 0) {
         perror("socket");
         exit(1);
@@ -331,18 +380,18 @@ int main(){
     }
     cout<<"연결 대기 성공!"<<endl;
 
-    while (true) {
+    while (isRunning) {
         struct sockaddr_in clientAddr={};
         socklen_t len = sizeof(clientAddr);//최대 받을 있는 크기
         int connectionSocket = accept(listenSocket, (struct sockaddr *)&clientAddr, &len);
         if (connectionSocket < 0) {
             perror("accept");
-            exit(1);
+            continue;
         }
         thread t(handleClient, connectionSocket, clientAddr);
         t.detach();
     }
-
+    cout<<"서버가 종료되었습니다!"<<endl;
     return 0;
 }
 
