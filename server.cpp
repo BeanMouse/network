@@ -23,12 +23,15 @@ namespace fs = std::filesystem;
 atomic<int> clientCount(0);
 atomic<bool> isRunning(true);
 int listenSocket;
+string docsPath;
+
 struct SectionLock {
     mutex m;
     condition_variable cv;
     queue<int> waitingClients;
     bool isLocked=false;
 };
+
 map<string, SectionLock> sectionLocks;
 
 vector<string> splitCommand(const string &input) {
@@ -47,6 +50,30 @@ vector<string> splitCommand(const string &input) {
     return tokens;
 }
 
+void readConfig() {
+    ifstream config("../config.txt");
+    if (!config) {
+        cerr << "[ERROR] config.txt 파일을 열 수 없습니다." << endl;
+        exit(1);
+    }
+    docsPath = "docs";
+    string key;
+    string equal;
+    while (config >> key) {
+        if (key == "docs_directory") {
+            config >>equal>> docsPath;
+            if (!fs::exists(docsPath)) {
+                fs::create_directories(docsPath);
+            }
+        }
+    }
+    config.close();
+}
+
+string getFilePath(const string& title) {
+    return docsPath + "/" + title + ".txt";
+}
+
 void handleClient(int connectionSocket, sockaddr_in clientAddr) {
     char clientIP[INET_ADDRSTRLEN]; //ip주소 저장
     inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);
@@ -60,36 +87,15 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
     while (true) {
         char buffer[1024];
         string command;
-
-        while (true) {
-            ssize_t bytesRead = recv(connectionSocket, buffer, sizeof(buffer) - 1, 0);
-            if (bytesRead <= 0) break;
-
-            // 1. 새로 받은 데이터 디버깅
-            cout << "[DEBUG] 받은 raw 데이터: ";
-            for (int i = 0; i < bytesRead; ++i) {
-                if (buffer[i] == '\b') cout << "[\\b]";
-                else if (buffer[i] == '\n') cout << "[\\n]";
-                else if (buffer[i] == '\r') cout << "[\\r]";
-                else cout << buffer[i];
-            }
-            cout << endl;
-
-            // 2. 누적 명령어에 반영 (백스페이스 적용 안 한 상태)
-            command.append(buffer, bytesRead);
-
-            // 3. 지금까지 누적된 전체 명령어 출력
-            cout << "[DEBUG] 누적된 명령: ";
-            for (char c : command) {
-                if (c == '\b') cout << "[\\b]";
-                else cout << c;
-            }
-            cout << endl;
-
-            if (!command.empty() && command.back() == '\n') break;
-        }
+        // 명령어 수신 루프
+        ssize_t bytesRead = recv(connectionSocket, buffer, sizeof(buffer) - 1, 0);
+        if (bytesRead <= 0) break;
+        buffer[bytesRead] = '\0';
+        command += buffer;
+        if (command.empty()) break;  // 클라이언트 종료 감지
         vector<string> cmd = splitCommand(command);
         string comments;
+
         if (cmd.size()==0) {
             comments="명령어를 입력해주세요...\n";
             send(connectionSocket, comments.c_str(), comments.length(), 0);
@@ -98,7 +104,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
         if (cmd[0]=="create") {
             cout<<"create"<<endl;
 
-            const string& filename = "docs/"+cmd[1]+".txt";
+            const string filename = getFilePath(cmd[1]);
             ifstream infile(filename);
             if (infile.is_open()) {
                 comments="이미 동일한 이름의 파일이 있습니다\n";
@@ -148,7 +154,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
          else if (cmd[0]=="read") {
              string contents;
              if (cmd.size() == 1) {
-                     for (const auto &entry : filesystem::directory_iterator("docs")) {
+                     for (const auto &entry : filesystem::directory_iterator(docsPath)) {
                          if (entry.is_regular_file()&&entry.path().extension()==".txt") {
                              ifstream file(entry.path());
                              if (file.is_open()) {
@@ -168,7 +174,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
                      }
                  }
              else if (cmd.size()==3) {
-                     string filename="docs/"+cmd[1]+".txt";
+                    const string filename = getFilePath(cmd[1]);
                      ifstream infile(filename);
                      cout<<filename<<endl;
                      if (infile.is_open()) {
@@ -217,7 +223,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
                  send(connectionSocket, comments.c_str(), comments.length(), 0);
                  continue;
              }
-             string filename = "docs/" + cmd[1] + ".txt";
+             string filename = getFilePath(cmd[1]);
              ifstream file(filename);
              if (!file.is_open()) {
                  comments = cmd[1]+" 제목의 파일이 존재하지 않습니다\n";
@@ -291,7 +297,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
              int lineCountInt = stoi(countBuf);
              if (lineCountInt > 10) lineCountInt = 10;
 
-             string input="내용을 입력해주세요:";
+             string input="내용을 입력해주세요\n";
              send(connectionSocket, input.c_str(), input.length(), 0);
              vector<string> sentences;
              for (int i = 0; i < lineCountInt; ++i) {
@@ -358,6 +364,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
 
 int main(){
     filesystem::create_directory("docs");
+    readConfig();
     listenSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (listenSocket < 0) {
         perror("socket");
@@ -385,7 +392,7 @@ int main(){
         socklen_t len = sizeof(clientAddr);//최대 받을 있는 크기
         int connectionSocket = accept(listenSocket, (struct sockaddr *)&clientAddr, &len);
         if (connectionSocket < 0) {
-            perror("accept");
+            cout<<"연결된 클라이언트 소켓이 모두 종료되었습니다"<<endl;
             continue;
         }
         thread t(handleClient, connectionSocket, clientAddr);
@@ -394,4 +401,3 @@ int main(){
     cout<<"서버가 종료되었습니다!"<<endl;
     return 0;
 }
-
