@@ -51,12 +51,11 @@ vector<string> splitCommand(const string &input) {
 }
 
 void readConfig() {
-    ifstream config("../config.txt");
+    ifstream config("config.txt");
     if (!config) {
         cerr << "[ERROR] config.txt 파일을 열 수 없습니다." << endl;
         exit(1);
     }
-    docsPath = "docs";
     string key;
     string equal;
     while (config >> key) {
@@ -362,9 +361,18 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
      }
 }
 
-int main(){
-    filesystem::create_directory("docs");
+int main(int argc, char *argv[]){
+    if (argc != 3) {
+        cerr<<"IP주소와 포트번호가 입력되지 않았습니다"<<endl;
+        return 1;
+    }
+    string serverIP = argv[1];
+    int serverPort = stoi(argv[2]);
     readConfig();
+    ofstream config("config.txt");
+    config << "docs_server = " << serverIP << " " << serverPort << endl;
+    config << "docs_directory = " << docsPath << endl;
+    config.close();
     listenSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (listenSocket < 0) {
         perror("socket");
@@ -373,8 +381,8 @@ int main(){
     cout<<"생성 성공"<<endl;
     struct sockaddr_in address = {};
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htonl(INADDR_ANY);
-    address.sin_port = htons(12345);
+    address.sin_addr.s_addr = inet_addr(serverIP.c_str());
+    address.sin_port = htons(serverPort);
     if (::bind(listenSocket,(struct sockaddr *)&address, sizeof(address)) < 0)//::는 functional과 헷갈림 방지
     {
         perror("bind");

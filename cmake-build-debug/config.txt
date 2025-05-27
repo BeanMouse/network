@@ -1,0 +1,2 @@
+docs_server = 127.0.0.1 14821
+docs_directory = docs

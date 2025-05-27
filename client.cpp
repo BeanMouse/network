@@ -17,7 +17,7 @@ int main() {
     int serverPort;
     string equal;
 
-    ifstream config("../config.txt");
+    ifstream config("config.txt");
     string key;
     while (config >> key) {
         if (key == "docs_server") {
