@@ -1,2 +1,2 @@
-docs_server = 127.0.0.1 1460
+docs_server = 127.0.0.1 3424
 docs_directory = docs
