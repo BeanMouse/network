@@ -174,6 +174,10 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
                  }
              else if (cmd.size()==3) {
                     const string filename = getFilePath(cmd[1]);
+                    size_t start=cmd[1].find('"');
+                    size_t end=cmd[1].find('"',start+1);
+                    string title= cmd[1].substr(start+1,end-start-1);
+                     contents+=title+"\n";
                      ifstream infile(filename);
                      cout<<filename<<endl;
                      if (infile.is_open()) {
@@ -187,13 +191,13 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
                                      string s_title = content.substr(dot + 2, end - (dot + 2));
                                      if (s_title == cmd[2]) {
                                          inSection = true;
-                                         contents+=content.substr(dot-1,end-(dot-1))+"\n";
+                                         contents+="\t"+content.substr(dot-1,end-(dot-1))+"\n";
                                      }
                                      else if (inSection) break;
                                  }
                              }
                              else if (inSection && !content.empty()){
-                                 contents +="\t"+ content + "\n";
+                                 contents +="\t\t"+ content + "\n";
                              }
                          }
                          if (!inSection) {
