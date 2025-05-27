@@ -238,6 +238,8 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) {
                      lock.waitingClients.push(connectionSocket);
                      comments = "다른 사용자가 이용 중 입니다.\n";
                      send(connectionSocket, comments.c_str(), comments.length(), 0);
+                     char flushBuf[1024];
+                     recv(connectionSocket, flushBuf, sizeof(flushBuf) - 1, MSG_DONTWAIT); // 클라이언트가 잘못 보낸 입력 제거
 
                      lock.cv.wait(lk, [&] {
                          return !lock.isLocked && lock.waitingClients.front() == connectionSocket;

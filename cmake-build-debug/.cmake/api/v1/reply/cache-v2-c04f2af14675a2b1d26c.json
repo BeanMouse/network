@@ -55,7 +55,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/ijuhui/CLionProjects/networks/cmake-build-debug"
+			"value" : "/Users/ijuhui/Desktop/network/cmake-build-debug"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -442,22 +442,6 @@
 			"value" : ""
 		},
 		{
-			"name" : "CMAKE_EXPORT_BUILD_DATABASE",
-			"properties" : 
-			[
-				{
-					"name" : "ADVANCED",
-					"value" : "1"
-				},
-				{
-					"name" : "HELPSTRING",
-					"value" : "Enable/Disable output of build database during the build."
-				}
-			],
-			"type" : "BOOL",
-			"value" : ""
-		},
-		{
 			"name" : "CMAKE_EXPORT_COMPILE_COMMANDS",
 			"properties" : 
 			[
@@ -495,7 +479,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/ijuhui/CLionProjects/networks/cmake-build-debug/CMakeFiles/pkgRedirects"
+			"value" : "/Users/ijuhui/Desktop/network/cmake-build-debug/CMakeFiles/pkgRedirects"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -507,7 +491,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "Ninja"
+			"value" : "Unix Makefiles"
 		},
 		{
 			"name" : "CMAKE_GENERATOR_INSTANCE",
@@ -555,7 +539,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/Users/ijuhui/CLionProjects/networks"
+			"value" : "/Users/ijuhui/Desktop/network"
 		},
 		{
 			"name" : "CMAKE_INSTALL_NAME_TOOL",
@@ -606,12 +590,16 @@
 			"properties" : 
 			[
 				{
+					"name" : "ADVANCED",
+					"value" : "1"
+				},
+				{
 					"name" : "HELPSTRING",
-					"value" : "No help, variable specified on the command line."
+					"value" : "Path to a program."
 				}
 			],
-			"type" : "UNINITIALIZED",
-			"value" : "/Applications/CLion.app/Contents/bin/ninja/mac/aarch64/ninja"
+			"type" : "FILEPATH",
+			"value" : "/usr/bin/make"
 		},
 		{
 			"name" : "CMAKE_MODULE_LINKER_FLAGS",
@@ -1134,42 +1122,6 @@
 			"value" : "FALSE"
 		},
 		{
-			"name" : "network_app_BINARY_DIR",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : "Value Computed by CMake"
-				}
-			],
-			"type" : "STATIC",
-			"value" : "/Users/ijuhui/CLionProjects/networks/cmake-build-debug"
-		},
-		{
-			"name" : "network_app_IS_TOP_LEVEL",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : "Value Computed by CMake"
-				}
-			],
-			"type" : "STATIC",
-			"value" : "ON"
-		},
-		{
-			"name" : "network_app_SOURCE_DIR",
-			"properties" : 
-			[
-				{
-					"name" : "HELPSTRING",
-					"value" : "Value Computed by CMake"
-				}
-			],
-			"type" : "STATIC",
-			"value" : "/Users/ijuhui/CLionProjects/networks"
-		},
-		{
 			"name" : "networks_BINARY_DIR",
 			"properties" : 
 			[
@@ -1179,7 +1131,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/ijuhui/CLionProjects/networks/cmake-build-debug"
+			"value" : "/Users/ijuhui/Desktop/network/cmake-build-debug"
 		},
 		{
 			"name" : "networks_IS_TOP_LEVEL",
@@ -1203,7 +1155,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/Users/ijuhui/CLionProjects/networks"
+			"value" : "/Users/ijuhui/Desktop/network"
 		}
 	],
 	"kind" : "cache",

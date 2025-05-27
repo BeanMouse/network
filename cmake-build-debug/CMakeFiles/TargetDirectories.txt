@@ -1,4 +1,4 @@
-/Users/ijuhui/CLionProjects/networks/cmake-build-debug/CMakeFiles/server.dir
-/Users/ijuhui/CLionProjects/networks/cmake-build-debug/CMakeFiles/client.dir
-/Users/ijuhui/CLionProjects/networks/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/ijuhui/CLionProjects/networks/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/Users/ijuhui/Desktop/network/cmake-build-debug/CMakeFiles/server.dir
+/Users/ijuhui/Desktop/network/cmake-build-debug/CMakeFiles/client.dir
+/Users/ijuhui/Desktop/network/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/ijuhui/Desktop/network/cmake-build-debug/CMakeFiles/rebuild_cache.dir

@@ -58,8 +58,8 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "/Users/ijuhui/CLionProjects/networks/cmake-build-debug",
-		"source" : "/Users/ijuhui/CLionProjects/networks"
+		"build" : "/Users/ijuhui/Desktop/network/cmake-build-debug",
+		"source" : "/Users/ijuhui/Desktop/network"
 	},
 	"version" : 
 	{

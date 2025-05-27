@@ -52,35 +52,67 @@ int main() {
             exit(0);
         }
         char buffer[1024];
-        ssize_t bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-        if (bytesRead > 0) {
-            buffer[bytesRead] = '\0';
-            cout << buffer ;
-        }
+
         if (msg.substr(0, 5) == "write") {
-            string countMsg;
-            getline(cin, countMsg);
-            send(clientSocket, countMsg.c_str(), countMsg.length(), 0);
+            while (true) {
+                // 🔥 루프 안에서 계속 새로 받음
+                ssize_t bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+                if (bytesRead <= 0) {
+                    cout << "서버와 연결이 끊겼습니다." << endl;
+                    break;
+                }
 
-            bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-            buffer[bytesRead] = '\0';
-            cout << buffer <<endl;
+                buffer[bytesRead] = '\0';
+                string serverMsg(buffer);
+                cout << serverMsg;
 
-            int count = stoi(countMsg);
-            if (count > 10) count = 10;
+                // 1. 대기 안내
+                if (serverMsg.find("다른 사용자가 이용 중") != string::npos) {
+                    continue;  // 다음 메시지 기다림
+                }
 
-            for (int i = 0; i < count; ++i) {
-                cout << "입력 줄 " << (i + 1) << ": ";
-                string line;
-                getline(cin, line);
-                line += '\n';
-                send(clientSocket, line.c_str(), line.length(), 0);
+                // 2. 정상 write 흐름
+                if (serverMsg.find("몇 줄을 입력할 지") != string::npos) {
+                    string countMsg;
+                    getline(cin, countMsg);
+                    send(clientSocket, countMsg.c_str(), countMsg.length(), 0);
+
+                    // "내용 입력해주세요" 메시지
+                    bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+                    buffer[bytesRead] = '\0';
+                    cout << buffer;
+
+                    int count = stoi(countMsg);
+                    if (count > 10) count = 10;
+
+                    for (int i = 0; i < count; ++i) {
+                        cout << "입력 줄 " << (i + 1) << ": ";
+                        string line;
+                        getline(cin, line);
+                        line += '\n';
+                        send(clientSocket, line.c_str(), line.length(), 0);
+                    }
+
+                    // 최종 메시지
+                    bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+                    buffer[bytesRead] = '\0';
+                    cout << buffer;
+                    break;
+                }
+
+                // 3. 오류 메시지
+                if (serverMsg.find("존재하지 않습니다") != string::npos ||
+                    serverMsg.find("형식") != string::npos ||
+                    serverMsg.find("유효하지 않은") != string::npos) {
+                    break;
+                    }
             }
-
-            bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
+        }
+        else {
+            ssize_t bytesRead = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
             if (bytesRead > 0) {
                 buffer[bytesRead] = '\0';
-                cout << buffer << endl;
+                cout << buffer ;
             }
         }
     }
