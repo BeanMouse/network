@@ -1,55 +1,56 @@
 //
 // Created by 이주희 on 25. 5. 7.
 //
-#include <arpa/inet.h>// inet_ntop 함수를 사용하기 위해 필요
-#include <atomic>// atomic 변수를 사용하기 위해 필요-> 멀티스레드 환경에서 안전하게 변수의 값을 변경할 수 있음
-#include <condition_variable>// condition_variable을 사용하여 스레드 간의 동기화를 처리
-#include <filesystem>// filesystem을 사용하여 파일 시스템 작업을 처리
-#include <fstream>// <fstream> 헤더 파일을 포함하여 파일 입출력을 사용
-#include <iostream>// <iostream> 헤더 파일을 포함하여 입출력 스트림을 사용
-#include <map>// map을 사용하여 섹션 잠금 정보를 저장
-#include <mutex>// mutex를 사용하여 스레드 간의 동기화를 처리
-#include <netinet/in.h>// struct sockaddr_in 구조체를 사용하기 위해 필요
-#include <queue>// queue를 사용하여 대기 중인 클라이언트를 관리
-#include <sstream>// sstream을 사용하여 문자열 스트림을 처리
-#include <string>// string을 사용하여 문자열을 처리
-#include <sys/socket.h>// 소켓을 사용하기 위해 필요
-#include <thread>// thread를 사용하여 멀티스레딩을 구현
-#include <unistd.h>// close 함수를 사용하기 위해 필요
-#include <vector>// vector를 사용하여 명령어와 섹션 제목을 저장
+#include <arpa/inet.h> // inet_ntop 함수를 사용하기 위해 필요
+#include <atomic> // atomic 변수를 사용하기 위해 필요-> 멀티스레드 환경에서 안전하게 변수의 값을 변경할 수 있음
+#include <condition_variable> // condition_variable을 사용하여 스레드 간의 동기화를 처리
+#include <filesystem> // filesystem을 사용하여 파일 시스템 작업을 처리
+#include <fstream> // <fstream> 헤더 파일을 포함하여 파일 입출력을 사용
+#include <iostream> // <iostream> 헤더 파일을 포함하여 입출력 스트림을 사용
+#include <map> // map을 사용하여 섹션 잠금 정보를 저장
+#include <mutex> // mutex를 사용하여 스레드 간의 동기화를 처리
+#include <netinet/in.h> // struct sockaddr_in 구조체를 사용하기 위해 필요
+#include <queue> // queue를 사용하여 대기 중인 클라이언트를 관리
+#include <sstream> // sstream을 사용하여 문자열 스트림을 처리
+#include <string> // string을 사용하여 문자열을 처리
+#include <sys/socket.h> // 소켓을 사용하기 위해 필요
+#include <thread> // thread를 사용하여 멀티스레딩을 구현
+#include <unistd.h> // close 함수를 사용하기 위해 필요
+#include <vector> // vector를 사용하여 명령어와 섹션 제목을 저장
 
 using namespace std;
 
 namespace fs = std::filesystem;
-//atomic은 모든 클라이언트가 공유하는 변수
-atomic<int> clientCount(0);// 클라이언트 수를 저장하는 atomic 변수
-atomic<bool> isRunning(true);// 서버가 실행 중인지 여부를 저장하는 atomic 변수
-int listenSocket;// 서버 소켓을 저장하는 변수
-string docsPath;// 문서 디렉토리 경로를 저장하는 변수
+// atomic은 모든 클라이언트가 공유하는 변수
+atomic<int> clientCount(0); // 클라이언트 수를 저장하는 atomic 변수
+atomic<bool> isRunning(true); // 서버가 실행 중인지 여부를 저장하는 atomic 변수
+int listenSocket; // 서버 소켓을 저장하는 변수
+string docsPath; // 문서 디렉토리 경로를 저장하는 변수
 
 struct SectionLock // 섹션 잠금 정보를 저장하는 구조체
 {
     mutex m; // 섹션 잠금을 위한 뮤텍스
-    condition_variable cv;// 대기 중인 클라이언트를 위한 조건 변수
-    queue<int> waitingClients;// 대기 중인 클라이언트 소켓을 저장하는 큐
-    bool isLocked = false;// 섹션이 잠겨 있는지 여부를 저장하는 변수
+    condition_variable cv; // 대기 중인 클라이언트를 위한 조건 변수
+    queue<int> waitingClients; // 대기 중인 클라이언트 소켓을 저장하는 큐
+    bool isLocked = false; // 섹션이 잠겨 있는지 여부를 저장하는 변수
 };
 
-map<string, SectionLock> sectionLocks; // 섹션 잠금 정보를 저장하는 맵 -> string 키는 "제목/섹션" 형식으로 섹션을 식별 vaule는 SectionLock 구조체
+map<string, SectionLock> sectionLocks; // 섹션 잠금 정보를 저장하는 맵 -> string 키는 "제목/섹션" 형식으로 섹션을 식별
+                                       // vaule는 SectionLock 구조체
 
 
 vector<string> splitCommand(const string &input) // 명령어를 공백으로 분리하는 함수
 {
-    vector<string> tokens;// 명령어를 저장할 벡터
-    stringstream ss(input);// 문자열 스트림을 사용하여 입력 문자열을 처리/
-    string token;// 토큰을 저장할 문자열 변수
+    vector<string> tokens; // 명령어를 저장할 벡터
+    stringstream ss(input); // 문자열 스트림을 사용하여 입력 문자열을 처리/
+    string token; // 토큰을 저장할 문자열 변수
     while (ss >> token) // 문자열 스트림에서 공백으로 구분된 토큰을 읽어옴
     {
         if (token.find('"') == 0) {
-            token = token.substr(1, token.length() - 2);// 첫 번째와 마지막 따옴표를 제거
-            tokens.push_back(token);// 따옴표가 있는 토큰을 벡터에 추가
+            token = token.substr(1, token.length() - 2); // 첫 번째와 마지막 따옴표를 제거
+            tokens.push_back(token); // 따옴표가 있는 토큰을 벡터에 추가
         } else {
-            tokens.push_back(token);// 따옴표가 없는 토큰을 벡터에 추가
+            tokens.push_back(token); // 따옴표가 없는 토큰을 벡터에 추가
         }
     }
     return tokens;
@@ -63,27 +64,31 @@ void readConfig() // config.txt 파일에서 docs_directory 경로를 읽어오�
         exit(1);
     }
     string key;
-    string equal;// docs_directory = 경로 형식으로 되어있기 때문에 equal을 통해 = 을 제거
+    string equal; // docs_directory = 경로 형식으로 되어있기 때문에 equal을 통해 = 을 제거
     while (config >> key) {
         if (key == "docs_directory") {
             config >> equal >> docsPath;
             if (!fs::exists(docsPath)) // docsPath가 존재하지 않으면
             {
-                fs::create_directories(docsPath);// docsPath 디렉토리를 생성
+                fs::create_directories(docsPath); // docsPath 디렉토리를 생성
             }
         }
     }
-    config.close();// config.txt 파일을 닫음
+    config.close(); // config.txt 파일을 닫음
 }
 
-string getFilePath(const string &title) { return docsPath + "/" + title + ".txt"; }// 제목에 해당하는 파일 경로를 반환하는 함수
+string getFilePath(const string &title) {
+    return docsPath + "/" + title + ".txt";
+} // 제목에 해당하는 파일 경로를 반환하는 함수
 
-void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 소켓, 클라이언트 주소를 인자로 받음
+void handleClient(int connectionSocket, sockaddr_in clientAddr) // 연결 하는 소켓, 클라이언트 주소를 인자로 받음
 {
-    char clientIP[INET_ADDRSTRLEN];//INET_ADDRSTRLEN은 IPv4 주소의 최대 길이 -> IPv4 주소를 문자열로 저장하기 위한 버퍼
-    inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP, INET_ADDRSTRLEN);// 클라이언트의 IP 주소를 문자열로 변환하여 clientIP에 저장
+    char clientIP[INET_ADDRSTRLEN]; // INET_ADDRSTRLEN은 IPv4 주소의 최대 길이 -> IPv4 주소를 문자열로 저장하기 위한
+                                    // 버퍼
+    inet_ntop(AF_INET, &(clientAddr.sin_addr), clientIP,
+              INET_ADDRSTRLEN); // 클라이언트의 IP 주소를 문자열로 변환하여 clientIP에 저장
     int clientPort = ntohs(clientAddr.sin_port);
-    ++clientCount;// 클라이언트 수를 증가시킴 atomic 변수이기 때문에 멀티스레드 환경에서도 안전하게 증가시킬 수 있음
+    ++clientCount; // 클라이언트 수를 증가시킴 atomic 변수이기 때문에 멀티스레드 환경에서도 안전하게 증가시킬 수 있음
     cout << "🌐 클라이언트 연결됨!" << endl;
     cout << "IP 주소: " << clientIP << endl;
     cout << "포트 번호: " << clientPort << endl;
@@ -92,19 +97,18 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
         char buffer[1024];
         string command;
         ssize_t bytesRead = recv(connectionSocket, buffer, sizeof(buffer) - 1, 0);
-        if (bytesRead <= 0)// 클라이언트가 연결을 종료했거나 오류가 발생한 경우
+        if (bytesRead <= 0) // 클라이언트가 연결을 종료했거나 오류가 발생한 경우
             break;
         buffer[bytesRead] = '\0';
         command += buffer;
         string comments;
-        if (command.empty())// 클라이언트가 아무것도 입력하지 않은 경우{
+        if (command.empty()) // 클라이언트가 아무것도 입력하지 않은 경우{
         {
             comments = "명령어를 입력해주세요...\n";
             send(connectionSocket, comments.c_str(), comments.length(), 0);
             continue;
-            
         }
-        vector<string> cmd = splitCommand(command);// 명령어 문자열을 공백과 따옴표 기준으로 나누어 벡터로 저장
+        vector<string> cmd = splitCommand(command); // 명령어 문자열을 공백과 따옴표 기준으로 나누어 벡터로 저장
 
         if (cmd.size() == 0) // 명령어가 비어있는 경우
         {
@@ -118,7 +122,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
 
             const string filename = getFilePath(cmd[1]);
             ifstream infile(filename);
-            //예외 처리 
+            // 예외 처리
             if (infile.is_open()) {
                 comments = "이미 동일한 이름의 파일이 있습니다\n";
                 send(connectionSocket, comments.c_str(), comments.length(), 0);
@@ -150,7 +154,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
                 if (cmd[3 + i].size() > 64) {
                     comments = "섹션 제목은 64바이트 이하로 제한됩니다\n";
                     send(connectionSocket, comments.c_str(), comments.length(), 0);
-                    isCreate = false;// 섹션 제목이 64바이트를 초과하면 생성하지 않음
+                    isCreate = false; // 섹션 제목이 64바이트를 초과하면 생성하지 않음
                     break;
                 }
             }
@@ -159,29 +163,31 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
             ofstream file(filename);
 
             for (int i = 0; i < content; i++) {
-                file << "[Section " << i + 1 << ". " << cmd[3 + i] << "]\n" << endl;// 섹션 제목을 파일에 작성
+                file << "[Section " << i + 1 << ". " << cmd[3 + i] << "]\n" << endl; // 섹션 제목을 파일에 작성
             }
-            file.close();// 파일을 닫음
-            string response = "create success " + filename + "\n";// 파일 생성 성공 메시지
+            file.close(); // 파일을 닫음
+            string response = "create success " + filename + "\n"; // 파일 생성 성공 메시지
             send(connectionSocket, response.c_str(), response.length(), 0);
         } else if (cmd[0] == "read") // read 명령어 처리
         {
-            string contents; 
-            if (cmd.size() == 1) //read 유형 1
+            string contents;
+            if (cmd.size() == 1) // read 유형 1
             {
-                for (const auto &entry: filesystem::directory_iterator(docsPath)) // docsPath 디렉토리 내의 모든 파일을 읽음
+                for (const auto &entry:
+                     filesystem::directory_iterator(docsPath)) // docsPath 디렉토리 내의 모든 파일을 읽음
                 {
                     if (entry.is_regular_file() && entry.path().extension() == ".txt") // .txt 확장자를 가진 파일만 처리
                     {
                         ifstream file(entry.path());
                         if (file.is_open()) {
                             string title = entry.path().filename().string();
-                            contents += title.substr(0, title.length() - 4) + "\n";// 파일 이름에서 .txt 확장자를 제거하고 제목으로 사용
+                            contents += title.substr(0, title.length() - 4) +
+                                        "\n"; // 파일 이름에서 .txt 확장자를 제거하고 제목으로 사용
                             string content;
                             while (getline(file, content)) {
-                                if (content.starts_with("[Section")) //섹션 제목을 찾아줌
+                                if (content.starts_with("[Section")) // 섹션 제목을 찾아줌
                                 {
-                                    string s_title = content.substr(9, content.length() - 10);// 섹션 제목을 추출
+                                    string s_title = content.substr(9, content.length() - 10); // 섹션 제목을 추출
                                     contents += "\t" + s_title + "\n";
                                 }
                             }
@@ -190,21 +196,21 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
                         }
                     }
                 }
-            } else if (cmd.size() == 3) //read 유형2
+            } else if (cmd.size() == 3) // read 유형2
             {
-                const string filename = getFilePath(cmd[1]);// 제목에 해당하는 파일 경로를 가져옴
+                const string filename = getFilePath(cmd[1]); // 제목에 해당하는 파일 경로를 가져옴
                 size_t start = cmd[1].find('"');
                 size_t end = cmd[1].find('"', start + 1);
                 string title = cmd[1].substr(start + 1, end - start - 1);
-                contents += title + "\n";// 제목을 출력
+                contents += title + "\n"; // 제목을 출력
                 ifstream infile(filename);
                 cout << filename << endl;
                 if (infile.is_open()) {
                     string content;
                     bool inSection = false;
-                    while (getline(infile, content))// 파일에서 한 줄씩 읽음
+                    while (getline(infile, content)) // 파일에서 한 줄씩 읽음
                     {
-                        if (content.starts_with("[Section")) //섹션 제목 찾기
+                        if (content.starts_with("[Section")) // 섹션 제목 찾기
                         {
                             size_t dot = content.find('.');
                             size_t end = content.find(']');
@@ -217,7 +223,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
                                     break;
                             }
                         } else if (inSection && !content.empty()) {
-                            contents += "\t\t" + content + "\n";// 섹션 내용 출력
+                            contents += "\t\t" + content + "\n"; // 섹션 내용 출력
                         }
                     }
                     if (!inSection) {
@@ -241,7 +247,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
             cout << "read" << endl;
         } else if (cmd[0] == "write") // write 명령어 처리
         {
-            //예외 처리
+            // 예외 처리
             if (cmd.size() != 3) {
                 comments = "write 형식은 write \"제목\" \"섹션\"입니다.\n";
                 send(connectionSocket, comments.c_str(), comments.length(), 0);
@@ -254,8 +260,8 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
                 send(connectionSocket, comments.c_str(), comments.length(), 0);
                 continue;
             }
-            string key = cmd[1] + "/" + cmd[2];// 섹션 잠금을 위한 키 생성
-            SectionLock &lock = sectionLocks[key];// 섹션 잠금을 위한 SectionLock 구조체 참조
+            string key = cmd[1] + "/" + cmd[2]; // 섹션 잠금을 위한 키 생성
+            SectionLock &lock = sectionLocks[key]; // 섹션 잠금을 위한 SectionLock 구조체 참조
 
             {
                 unique_lock<mutex> lk(lock.m);
@@ -263,10 +269,6 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
                     lock.waitingClients.push(connectionSocket);
                     comments = "다른 사용자가 이용 중 입니다.\n";
                     send(connectionSocket, comments.c_str(), comments.length(), 0);
-                    char flushBuf[1024];
-                    recv(connectionSocket, flushBuf, sizeof(flushBuf) - 1,
-                         MSG_DONTWAIT); // 클라이언트가 잘못 보낸 입력 제거
-
                     lock.cv.wait(lk, [&] { return !lock.isLocked && lock.waitingClients.front() == connectionSocket; });
 
                     lock.waitingClients.pop(); // 내 차례니까 큐에서 빠짐
@@ -313,7 +315,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
                 continue;
             }
 
-            //줄을 받아서 입력을 받아옴
+            // 줄을 받아서 입력을 받아옴
             string askLineCount = "몇 줄을 입력할 지 숫자만 입력해주세요(최대 10줄, 초과 시 10줄로 제한됩니다): ";
             send(connectionSocket, askLineCount.c_str(), askLineCount.length(), 0);
             char countBuf[10];
@@ -341,7 +343,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
 
                 sentences.push_back(sentence);
             }
-            //섹션에 입력된 줄을 삽입
+            // 섹션에 입력된 줄을 삽입
             auto it = newContents.begin();
             while (it != newContents.end()) {
                 if (it->starts_with("[Section")) {
@@ -374,7 +376,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
             string response = "다음에 봅시다";
             send(connectionSocket, response.c_str(), response.length(), 0);
             close(connectionSocket);
-            clientCount -= 1;// 클라이언트 수를 감소시킴
+            clientCount -= 1; // 클라이언트 수를 감소시킴
             if (clientCount == 0) // 모든 클라이언트가 연결 종료
             {
                 isRunning = false;
@@ -388,7 +390,7 @@ void handleClient(int connectionSocket, sockaddr_in clientAddr) //연결 하는 
     }
 }
 
-int main(int argc, char *argv[]) //argc로 프로그램 실행 시 인자 개수를 확인하고, *argv로 IP주소와 포트번호를 받아옴
+int main(int argc, char *argv[]) // argc로 프로그램 실행 시 인자 개수를 확인하고, *argv로 IP주소와 포트번호를 받아옴
 {
     if (argc != 3) // 프로그램 실행 시 IP주소와 포트번호가 입력되지 않았는지 확인
     {
@@ -396,13 +398,13 @@ int main(int argc, char *argv[]) //argc로 프로그램 실행 시 인자 개수
         return 1;
     }
     string serverIP = argv[1]; // 서버 IP 주소를 받아옴
-    int serverPort = stoi(argv[2]);// 서버 포트 번호를 받아옴
-    readConfig();// config.txt 파일에서 docs_directory 경로를 읽어옴
-    ofstream config("config.txt");// config.txt 파일을 열어 서버 IP 주소와 포트 번호, docs_directory 경로를 저장
+    int serverPort = stoi(argv[2]); // 서버 포트 번호를 받아옴
+    readConfig(); // config.txt 파일에서 docs_directory 경로를 읽어옴
+    ofstream config("config.txt"); // config.txt 파일을 열어 서버 IP 주소와 포트 번호, docs_directory 경로를 저장
     config << "docs_server = " << serverIP << " " << serverPort << endl;
     config << "docs_directory = " << docsPath << endl;
     config.close();
-    listenSocket = socket(AF_INET, SOCK_STREAM, 0);// IPv4 바탕, TCP listen 소켓 생성
+    listenSocket = socket(AF_INET, SOCK_STREAM, 0); // IPv4 바탕, TCP listen 소켓 생성
     if (listenSocket < 0) {
         perror("socket");
         exit(1);
@@ -425,15 +427,16 @@ int main(int argc, char *argv[]) //argc로 프로그램 실행 시 인자 개수
 
     while (isRunning) // 서버가 실행 중인 동안 클라이언트 연결을 기다림
     {
-        struct sockaddr_in clientAddr = {};// 클라이언트 주소 구조체 초기화
-        socklen_t len = sizeof(clientAddr);// 클라이언트 주소 구조체의 크기를 저장
-        int connectionSocket = accept(listenSocket, (struct sockaddr *) &clientAddr, &len);//connectionSocket에 클라이언트 소켓을 저장
+        struct sockaddr_in clientAddr = {}; // 클라이언트 주소 구조체 초기화
+        socklen_t len = sizeof(clientAddr); // 클라이언트 주소 구조체의 크기를 저장
+        int connectionSocket = accept(listenSocket, (struct sockaddr *) &clientAddr,
+                                      &len); // connectionSocket에 클라이언트 소켓을 저장
         if (connectionSocket < 0) {
             cout << "연결된 클라이언트 소켓이 모두 종료되었습니다" << endl;
             continue;
         }
-        thread t(handleClient, connectionSocket, clientAddr);// 클라이언트 소켓을 처리하는 스레드를 생성
-        t.detach();// 스레드를 분리하여 독립적으로 실행되도록 함
+        thread t(handleClient, connectionSocket, clientAddr); // 클라이언트 소켓을 처리하는 스레드를 생성
+        t.detach(); // 스레드를 분리하여 독립적으로 실행되도록 함
     }
     cout << "서버가 종료되었습니다!" << endl;
     return 0;
