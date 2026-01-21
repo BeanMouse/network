@@ -13,6 +13,7 @@ IPv4와 TCP 소켓을 기반으로 한 클라이언트–서버 문서 공유 �
 ## Architecture
 - **구조 도식화**
 <img width="727" height="502" alt="스크린샷 2026-01-21 오후 2 03 55" src="https://github.com/user-attachments/assets/39421fff-1365-4d69-94cb-fc3979ae09aa" />
+
 - **Client**
   - `config.txt` 파일을 통해 서버 IP와 포트 번호를 읽어 접속
   - 명령어(create, read, write, bye)를 서버로 전송
